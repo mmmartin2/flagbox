@@ -1,0 +1,17 @@
+{
+  "name": "flagbox",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local, file-backed feature flags with a CLI",
+  "type": "module",
+  "main": "dist/flags.js",
+  "bin": {
+    "flagbox": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}
