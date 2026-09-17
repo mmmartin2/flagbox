@@ -37,6 +37,31 @@ evaluate(newCheckout, { id: "user-42", attributes: { plan: "internal" } });
 // -> true, rule matched regardless of rollout bucket
 ```
 
+Flags aren't limited to on/off. Give a flag `variants` and use `evaluateVariant`
+to pick one of several string values, weighted by percentage and bucketed the
+same deterministic way as rollout:
+
+```ts
+import { evaluateVariant, type FlagDefinition } from "flagbox";
+
+const buttonColor: FlagDefinition = {
+  key: "button-color",
+  enabled: true,
+  variants: [
+    { value: "blue", weight: 50 },
+    { value: "green", weight: 30 },
+    { value: "red", weight: 20 },
+  ],
+};
+
+evaluateVariant(buttonColor, { id: "user-42" });
+// -> "blue" | "green" | "red", weighted by the percentages above
+// -> undefined if the flag is off, has no rules/rollout match, or has no variants
+```
+
+The variant bucket is seeded separately from the rollout bucket, so a flag's
+on/off split and its variant split don't correlate.
+
 For persistence, use `FlagStore`, which reads and writes a JSON file:
 
 ```ts
@@ -52,9 +77,13 @@ store.evaluate("dark-mode", { id: "user-42" });
 ```
 flagbox add new-checkout --rollout 25
 flagbox rule new-checkout plan internal
+flagbox add button-color
+flagbox variant button-color blue 50
+flagbox variant button-color green 50
 flagbox list
 flagbox eval new-checkout --user user-42
 flagbox eval new-checkout --user user-7 --attr plan=internal
+flagbox eval button-color --user user-42
 flagbox off new-checkout
 ```
 
@@ -75,6 +104,6 @@ output.
 
 ## Status
 
-Early skeleton: boolean flags, percentage rollout, and simple attribute
-rules work. No variant/multivalue flags yet, no watch mode for the JSON
-file, no schema validation on load.
+Early skeleton: boolean flags, variant/multivalue flags, percentage rollout,
+and simple attribute rules work. No watch mode for the JSON file yet, no
+schema validation on load.

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { FlagStore, type EvalContext, type FlagRule } from "./flags.js";
+import { FlagStore, type EvalContext, type FlagRule, type FlagVariant } from "./flags.js";
 
 const STORE_PATH = process.env.FLAGBOX_FILE ?? "flags.json";
 
@@ -13,6 +13,7 @@ Usage:
   flagbox off <key>
   flagbox rollout <key> <0-100>
   flagbox rule <key> <attribute> <value>
+  flagbox variant <key> <value> <weight 0-100>
   flagbox rm <key>
   flagbox eval <key> --user <id> [--attr key=value ...]
 
@@ -51,6 +52,9 @@ function main(): void {
         const parts = [flag.enabled ? "on " : "off"];
         if (flag.rollout !== undefined) parts.push(`rollout=${flag.rollout}%`);
         if (flag.rules?.length) parts.push(`rules=${flag.rules.length}`);
+        if (flag.variants?.length) {
+          parts.push(`variants=${flag.variants.map((v) => `${v.value}:${v.weight}%`).join(",")}`);
+        }
         console.log(`${flag.key.padEnd(24)} ${parts.join(" ")}`);
       }
       return;
@@ -105,6 +109,24 @@ function main(): void {
       return;
     }
 
+    case "variant": {
+      const [key, value, weightRaw] = positional;
+      if (!key || !value || weightRaw === undefined) {
+        return fail("variant requires a key, a value, and a weight");
+      }
+      const flag = store.get(key);
+      if (!flag) return fail(`unknown flag: ${key}`);
+      const weight = Number(weightRaw);
+      if (!Number.isFinite(weight) || weight < 0 || weight > 100) {
+        return fail("weight must be a number between 0 and 100");
+      }
+      const variant: FlagVariant = { value, weight };
+      flag.variants = [...(flag.variants ?? []).filter((v) => v.value !== value), variant];
+      store.upsert(flag);
+      console.log(`added variant to ${key}: ${value}=${weight}%`);
+      return;
+    }
+
     case "rm": {
       const key = positional[0];
       if (!key) return fail("rm requires a key");
@@ -122,7 +144,12 @@ function main(): void {
         if (attrKey && attrValue !== undefined) attributes[attrKey] = attrValue;
       }
       const context: EvalContext = { id: user, attributes };
-      console.log(store.evaluate(key, context));
+      const flag = store.get(key);
+      if (flag?.variants?.length) {
+        console.log(store.evaluateVariant(key, context) ?? "false");
+      } else {
+        console.log(store.evaluate(key, context));
+      }
       return;
     }
 

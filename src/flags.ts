@@ -6,6 +6,12 @@ export interface FlagRule {
   equals: string;
 }
 
+export interface FlagVariant {
+  value: string;
+  /** percent of ids that get this variant, 0-100. a flag's variant weights should add up to 100. */
+  weight: number;
+}
+
 export interface FlagDefinition {
   key: string;
   enabled: boolean;
@@ -13,6 +19,8 @@ export interface FlagDefinition {
   rollout?: number;
   /** any matching rule forces the flag on, bypassing rollout. used for beta testers, internal accounts, etc. */
   rules?: FlagRule[];
+  /** when set, evaluateVariant() picks one of these instead of a plain boolean. */
+  variants?: FlagVariant[];
   description?: string;
 }
 
@@ -26,9 +34,24 @@ export interface EvalContext {
  * lands in the same bucket for a given flag key and a rollout percentage can
  * grow over time without reshuffling who already has the flag.
  */
-export function bucketOf(flagKey: string, id: string): number {
-  const digest = createHash("sha256").update(`${flagKey}:${id}`).digest();
+export function bucketOf(flagKey: string, id: string, salt = ""): number {
+  const digest = createHash("sha256").update(`${flagKey}${salt}:${id}`).digest();
   return digest.readUInt32BE(0) % 100;
+}
+
+/**
+ * Picks a variant using a bucket seeded separately from the rollout bucket,
+ * so a flag's on/off rollout and its variant split don't correlate (e.g. the
+ * first 10% to get the flag turned on aren't also always the first variant).
+ */
+function pickVariant(variants: FlagVariant[], flagKey: string, id: string): string | undefined {
+  const bucket = bucketOf(flagKey, id, ":variant");
+  let cumulative = 0;
+  for (const variant of variants) {
+    cumulative += variant.weight;
+    if (bucket < cumulative) return variant.value;
+  }
+  return undefined;
 }
 
 function rulesMatch(rules: FlagRule[], context: EvalContext): boolean {
@@ -44,6 +67,16 @@ export function evaluate(flag: FlagDefinition, context: EvalContext): boolean {
   if (flag.rollout <= 0) return false;
 
   return bucketOf(flag.key, context.id) < flag.rollout;
+}
+
+/**
+ * Like evaluate(), but for flags with variants: returns the assigned
+ * variant's value, or undefined if the flag is off or has no variants.
+ */
+export function evaluateVariant(flag: FlagDefinition, context: EvalContext): string | undefined {
+  if (!flag.variants || flag.variants.length === 0) return undefined;
+  if (!evaluate(flag, context)) return undefined;
+  return pickVariant(flag.variants, flag.key, context.id);
 }
 
 export class FlagStore {
@@ -88,5 +121,11 @@ export class FlagStore {
     const flag = this.flags.get(key);
     if (!flag) throw new Error(`unknown flag: ${key}`);
     return evaluate(flag, context);
+  }
+
+  evaluateVariant(key: string, context: EvalContext): string | undefined {
+    const flag = this.flags.get(key);
+    if (!flag) throw new Error(`unknown flag: ${key}`);
+    return evaluateVariant(flag, context);
   }
 }
