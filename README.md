@@ -105,5 +105,7 @@ output.
 ## Status
 
 Early skeleton: boolean flags, variant/multivalue flags, percentage rollout,
-and simple attribute rules work. No watch mode for the JSON file yet, no
-schema validation on load.
+and simple attribute rules work. Loading flags.json validates its shape and
+throws a single error listing every problem found, rather than failing
+opaquely on the first bad field. No watch mode for the JSON file yet, no
+`--json` output for the CLI.
