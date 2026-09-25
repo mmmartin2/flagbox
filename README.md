@@ -90,6 +90,15 @@ flagbox off new-checkout
 The CLI reads and writes `flags.json` in the current directory by default;
 set `FLAGBOX_FILE` to point somewhere else.
 
+Add `--json` to any command to get machine-readable output instead of text,
+for scripting:
+
+```
+flagbox list --json
+flagbox eval new-checkout --user user-42 --json
+# {"key":"new-checkout","user":"user-42","result":true}
+```
+
 ## Building
 
 ```
@@ -107,5 +116,5 @@ output.
 Early skeleton: boolean flags, variant/multivalue flags, percentage rollout,
 and simple attribute rules work. Loading flags.json validates its shape and
 throws a single error listing every problem found, rather than failing
-opaquely on the first bad field. No watch mode for the JSON file yet, no
-`--json` output for the CLI.
+opaquely on the first bad field. The CLI supports `--json` output for
+scripting. No watch mode for the JSON file yet, and no test suite.
