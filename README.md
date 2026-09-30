@@ -111,10 +111,22 @@ There's nothing else in the dependency tree - the compiler is the only
 tool involved, and it's only needed to build, not to run the compiled
 output.
 
+## Tests
+
+```
+npm install --no-save typescript
+npm test
+```
+
+The tests use `node:test` and compile alongside the source, so there is no
+test runner to install. They cover bucket distribution, rollout, rules,
+variant weights, file validation, and `FlagStore` persistence.
+
 ## Status
 
 Early skeleton: boolean flags, variant/multivalue flags, percentage rollout,
 and simple attribute rules work. Loading flags.json validates its shape and
 throws a single error listing every problem found, rather than failing
 opaquely on the first bad field. The CLI supports `--json` output for
-scripting. No watch mode for the JSON file yet, and no test suite.
+scripting. No watch mode for the JSON file yet, and the CLI itself is not
+covered by tests.

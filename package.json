@@ -9,7 +9,8 @@
     "flagbox": "dist/cli.js"
   },
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "test": "tsc && node --test dist/flags.test.js"
   },
   "devDependencies": {
     "typescript": "^5.5.4"
